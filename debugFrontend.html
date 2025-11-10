@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA API Debug - Frontend Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0b0d;
+            color: #00ff8f;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { color: #00ff8f; }
+        .container {
+            background: #1a1b1e;
+            border: 2px solid #00ff8f;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        button {
+            background: #00ff8f;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 5px;
+        }
+        button:hover { background: #00cc72; }
+        #output {
+            background: #0a0b0d;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            min-height: 200px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+        #response {
+            background: #0a0b0d;
+            border: 2px solid #00ff8f;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 16px;
+            color: #fff;
+        }
+        .streaming { color: #00ff8f; }
+        .error { color: #ff4444; }
+        .success { color: #00ff8f; }
+        .info { color: #4da6ff; }
+        input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #00ff8f;
+            border-radius: 5px;
+            background: #0a0b0d;
+            color: #fff;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔬 NVIDIA API Frontend Debug</h1>
+    
+    <div class="container">
+        <h2>Test NVIDIA API Streaming</h2>
+        <input type="text" id="promptInput" placeholder="Enter your message..." value="Hello! Tell me about yourself in one sentence.">
+        <button onclick="testStreaming()">🚀 Test Streaming</button>
+        <button onclick="clearAll()">🗑️ Clear</button>
+        
+        <h3>📥 Streaming Response:</h3>
+        <div id="response" class="streaming">Waiting for response...</div>
+        
+        <h3>📋 Debug Log:</h3>
+        <div id="output">Ready to test...</div>
+    </div>
+
+    <script>
+        const API_KEY = "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";
+        const ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions";
+        const MODEL = "moonshotai/kimi-k2-instruct";
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<span class="${type}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateResponse(text) {
+            document.getElementById('response').innerHTML = text;
+        }
+
+        function clearAll() {
+            document.getElementById('output').innerHTML = '';
+            document.getElementById('response').innerHTML = 'Waiting for response...';
+        }
+
+        async function testStreaming() {
+            clearAll();
+            const prompt = document.getElementById('promptInput').value;
+            
+            log('🚀 Starting NVIDIA API streaming test...', 'info');
+            log(`📝 Prompt: "${prompt}"`, 'info');
+            log('━'.repeat(70), 'info');
+            
+            try {
+                log('📤 Sending request to NVIDIA...', 'info');
+                
+                const response = await fetch(ENDPOINT, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${API_KEY}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        model: MODEL,
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0.6,
+                        top_p: 0.9,
+                        max_tokens: 4096,
+                        stream: true
+                    }),
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ API Error: ${response.status}`, 'error');
+                    log(errorText, 'error');
+                    updateResponse(`❌ Error: ${errorText}`);
+                    return;
+                }
+                
+                log('✅ Connection established, starting stream...', 'success');
+                updateResponse('');
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let result = "";
+                let chunkCount = 0;
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        log('✅ Stream complete!', 'success');
+                        break;
+                    }
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split("\n").filter(l => l.trim().startsWith("data:"));
+                    
+                    for (const line of lines) {
+                        const json = line.replace(/^data:\s*/, "");
+                        if (json === "[DONE]") {
+                            log('📌 Received [DONE] signal', 'info');
+                            break;
+                        }
+                        
+                        try {
+                            const data = JSON.parse(json);
+                            const content = data?.choices?.[0]?.delta?.content;
+                            if (content) {
+                                result += content;
+                                chunkCount++;
+                                
+                                // Update UI in real-time
+                                updateResponse(result);
+                                
+                                log(`📦 Chunk ${chunkCount}: "${content}" (Total: ${result.length} chars)`, 'streaming');
+                            }
+                        } catch (e) {
+                            log(`⚠️ Parse error: ${e.message}`, 'error');
+                        }
+                    }
+                }
+                
+                log('━'.repeat(70), 'info');
+                log(`✅ SUCCESS!`, 'success');
+                log(`   Total chunks: ${chunkCount}`, 'success');
+                log(`   Total length: ${result.length} characters`, 'success');
+                log(`   Final response: "${result}"`, 'success');
+                
+            } catch (error) {
+                log(`❌ Exception: ${error.message}`, 'error');
+                updateResponse(`❌ Error: ${error.message}`);
+            }
+        }
+        
+        // Auto-test on load
+        setTimeout(() => {
+            log('💡 Click "Test Streaming" to see real-time NVIDIA API streaming!', 'info');
+        }, 500);
+    </script>
+</body>
+</html>

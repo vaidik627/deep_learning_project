@@ -1,0 +1,365 @@
+import React, { useState, useEffect } from 'react';
+import './App.css';
+import ParticleBackground from './components/ParticleBackground';
+import AnimatedGradientBackground from './components/AnimatedGradientBackground';
+import Sidebar from './components/Sidebar';
+import ModelBar from './components/ModelBar';
+import ChatInput from './components/ChatInput';
+import ModelCardContainer from './components/ModelCardContainer';
+import { simulateStreamingResponse } from './utils/streamResponse';
+import { fetchModelResponse, initializeNvidiaAPI } from './utils/api';
+
+// Types
+interface ChatMessage {
+  user: string;
+  ai: string;
+  timestamp: number;
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  timestamp: number;
+  modelsUsed: string[];
+  messages: Record<string, ChatMessage[]>;
+}
+
+// Define model data
+const modelData = [
+  { id: 'gpt', name: 'GPT-5 Nano', color: '#00ff8f', icon: '🤖' },
+  { id: 'gemini', name: 'Gemini 2.5 Pro', color: '#b366ff', icon: '🔮' },
+  { id: 'deepseek', name: 'DeepSeek Chat', color: '#ff6b00', icon: '🧠' },
+  { id: 'perplexity', name: 'Perplexity Search', color: '#00ffc6', icon: '🔍' },
+  { id: 'anthropic', name: 'Claude 3.5 Sonnet', color: '#ff9500', icon: '📝' },
+  { id: 'mistral', name: 'Mistral Large', color: '#ff4d94', icon: '🌪️' },
+];
+
+// Mock responses for different models
+const mockResponses: Record<string, string[]> = {
+  gpt: [
+    "I'm GPT-5 Nano, an advanced language model. I can help you with a wide range of tasks including writing, analysis, coding, and creative problem-solving. How can I assist you today?",
+    "Based on your query, I'd recommend breaking this down into smaller, manageable steps. Let me provide a structured approach to help you achieve your goal effectively.",
+    "That's an interesting question! Let me analyze this from multiple perspectives to give you a comprehensive answer."
+  ],
+  gemini: [
+    "Hello! I'm Gemini 2.5 Pro. I excel at multimodal understanding and can process both text and visual information. I'm here to provide detailed, accurate responses to your questions.",
+    "I've processed your request and here's my analysis: This requires a balanced approach considering both technical feasibility and practical implementation.",
+    "Great question! Let me break this down with clear examples and actionable insights."
+  ],
+  deepseek: [
+    "DeepSeek Chat here! I specialize in deep reasoning and technical problem-solving. I can help you understand complex concepts and provide detailed technical explanations.",
+    "After analyzing your query, I can provide several approaches. Each has its own advantages depending on your specific requirements and constraints.",
+    "This is a fascinating topic! Let me dive deep into the technical aspects and provide you with a comprehensive explanation."
+  ],
+  perplexity: [
+    "Perplexity Search reporting! I combine real-time search capabilities with AI reasoning to provide you with up-to-date, well-researched answers backed by sources.",
+    "I've searched through multiple sources to compile this answer. Here's what I found from the most reliable and recent information available.",
+    "Based on current data and research, here's a comprehensive answer with relevant citations and sources."
+  ],
+  anthropic: [
+    "Claude 3.5 Sonnet here. I'm designed to be helpful, harmless, and honest. I can assist with analysis, writing, coding, and thoughtful conversation on complex topics.",
+    "I appreciate your question. Let me provide a nuanced response that considers multiple viewpoints and potential implications.",
+    "That's a thought-provoking query. Here's my analysis, taking into account various factors and considerations."
+  ],
+  mistral: [
+    "Mistral Large at your service! I'm optimized for efficiency and accuracy. I can handle complex reasoning tasks while maintaining high performance.",
+    "I've processed your request efficiently. Here's a clear, concise answer that addresses your main points directly.",
+    "Excellent question! Let me provide you with a well-structured response that covers all the key aspects."
+  ]
+};
+
+function App() {
+  // State
+  const [isFirstPrompt, setIsFirstPrompt] = useState(true);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [enabledModels, setEnabledModels] = useState<string[]>(['gpt', 'gemini']);
+  const [typingModels, setTypingModels] = useState<string[]>([]);
+  
+  // NEW: Stacked conversation history per model
+  const [modelConversations, setModelConversations] = useState<Record<string, ChatMessage[]>>({});
+  
+  // Chat history state
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  
+  // Initialize NVIDIA API
+  useEffect(() => {
+    initializeNvidiaAPI().then((verified: boolean) => {
+      if (verified) {
+        console.log('✅ NVIDIA API initialized successfully');
+      } else {
+        console.warn('⚠️ NVIDIA API verification failed - will use fallback');
+      }
+    });
+  }, []);
+  
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const savedSessions = localStorage.getItem('chatSessions');
+    if (savedSessions) {
+      try {
+        const sessions = JSON.parse(savedSessions);
+        setChatSessions(sessions);
+      } catch (e) {
+        console.error('Failed to load chat sessions:', e);
+      }
+    }
+    
+    // Load stacked conversations for each model
+    const savedConversations = localStorage.getItem('modelConversations');
+    if (savedConversations) {
+      try {
+        setModelConversations(JSON.parse(savedConversations));
+      } catch (e) {
+        console.error('Failed to load conversations:', e);
+      }
+    }
+  }, []);
+  
+  // Save chat sessions to localStorage
+  useEffect(() => {
+    if (chatSessions.length > 0) {
+      localStorage.setItem('chatSessions', JSON.stringify(chatSessions));
+    }
+  }, [chatSessions]);
+  
+  // Save stacked conversations to localStorage
+  useEffect(() => {
+    if (Object.keys(modelConversations).length > 0) {
+      localStorage.setItem('modelConversations', JSON.stringify(modelConversations));
+    }
+  }, [modelConversations]);
+
+  // Toggle sidebar
+  const toggleSidebar = () => {
+    setIsSidebarExpanded(!isSidebarExpanded);
+  };
+
+  // Toggle model selection
+  const toggleModel = (modelId: string) => {
+    setEnabledModels(prev => {
+      if (prev.includes(modelId)) {
+        return prev.filter(id => id !== modelId);
+      } else {
+        return [...prev, modelId];
+      }
+    });
+  };
+
+  // Handle chat submission with async model execution and stacked history
+  const handleChatSubmit = async (message: string) => {
+    setIsFirstPrompt(false);
+    
+    // Create or update session
+    const sessionId = currentSessionId || `session_${Date.now()}`;
+    const sessionTitle = message.split(' ').slice(0, 6).join(' ') + (message.split(' ').length > 6 ? '...' : '');
+    
+    if (!currentSessionId) {
+      setCurrentSessionId(sessionId);
+    }
+    
+    // Set typing state for all enabled models
+    setTypingModels(enabledModels.slice());
+    
+    // Add "Generating..." placeholder for each model immediately
+    enabledModels.forEach(modelId => {
+      setModelConversations(prev => ({
+        ...prev,
+        [modelId]: [
+          ...(prev[modelId] || []),
+          { user: message, ai: "Generating...", timestamp: Date.now() }
+        ]
+      }));
+    });
+    
+    // Execute all model requests in parallel (async) with streaming
+    const modelPromises = enabledModels.map(async (modelId) => {
+      try {
+        // Progressive streaming callback
+        const onStream = (partialText: string) => {
+          setModelConversations(prev => {
+            const currentConversation = prev[modelId] || [];
+            const updatedConversation = [...currentConversation];
+            
+            // Update the last message with streaming text
+            if (updatedConversation.length > 0) {
+              updatedConversation[updatedConversation.length - 1] = {
+                user: message,
+                ai: partialText,
+                timestamp: Date.now()
+              };
+            }
+            
+            return {
+              ...prev,
+              [modelId]: updatedConversation
+            };
+          });
+        };
+        
+        // Use real NVIDIA API for GPT-5 Nano, mock for others
+        if (modelId === 'gpt') {
+          // Real NVIDIA API call
+          await fetchModelResponse(modelId, message, onStream);
+        } else {
+          // Mock response for other models
+          const typingDuration = Math.random() * 2000 + 1500;
+          await new Promise(resolve => setTimeout(resolve, typingDuration));
+          
+          const responses = mockResponses[modelId] || ["I'm processing your request..."];
+          const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+          
+          await simulateStreamingResponse(modelId, randomResponse, onStream, 15);
+        }
+        
+        // Remove from typing state
+        setTypingModels(prev => prev.filter(id => id !== modelId));
+        
+        return { modelId, success: true };
+      } catch (error) {
+        console.error(`${modelId} failed:`, error);
+        
+        // Update with error message
+        setModelConversations(prev => {
+          const currentConversation = prev[modelId] || [];
+          const updatedConversation = [...currentConversation];
+          
+          if (updatedConversation.length > 0) {
+            updatedConversation[updatedConversation.length - 1] = {
+              user: message,
+              ai: `⚠️ Error: ${error instanceof Error ? error.message : String(error)}`,
+              timestamp: Date.now()
+            };
+          }
+          
+          return {
+            ...prev,
+            [modelId]: updatedConversation
+          };
+        });
+        
+        setTypingModels(prev => prev.filter(id => id !== modelId));
+        return { modelId, success: false };
+      }
+    });
+    
+    // Wait for all models to complete
+    await Promise.allSettled(modelPromises);
+    
+    // Update or create session
+    setChatSessions(prev => {
+      const existingIndex = prev.findIndex(s => s.id === sessionId);
+      const newSession: ChatSession = {
+        id: sessionId,
+        title: sessionTitle,
+        timestamp: Date.now(),
+        modelsUsed: enabledModels,
+        messages: modelConversations
+      };
+      
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...newSession,
+          title: prev[existingIndex].title || sessionTitle,
+        };
+        return updated;
+      }
+      
+      return [newSession, ...prev];
+    });
+  };
+  
+  // Load a previous session
+  const loadSession = (sessionId: string) => {
+    const session = chatSessions.find(s => s.id === sessionId);
+    if (session) {
+      setCurrentSessionId(sessionId);
+      setModelConversations(session.messages);
+      setEnabledModels(session.modelsUsed);
+      setIsFirstPrompt(false);
+    }
+  };
+  
+  // Clear all history
+  const clearAllHistory = () => {
+    if (window.confirm('Are you sure you want to clear all chat history?')) {
+      setChatSessions([]);
+      setModelConversations({});
+      setCurrentSessionId(null);
+      localStorage.removeItem('chatSessions');
+      localStorage.removeItem('modelConversations');
+      setIsFirstPrompt(true);
+    }
+  };
+  
+  // Start new chat
+  const startNewChat = () => {
+    setCurrentSessionId(null);
+    setModelConversations({});
+    setIsFirstPrompt(true);
+  };
+
+  // Calculate main content margin based on sidebar state
+  const mainContentMargin = isSidebarExpanded ? 'ml-[260px]' : 'ml-[70px]';
+
+  return (
+    <div className="min-h-screen bg-background text-white font-inter relative">
+      {/* Gradient motion layer */}
+      <div className="fixed inset-0 gradient-motion-bg -z-10" />
+      
+      {/* Animated gradient background */}
+      <AnimatedGradientBackground />
+      
+      {/* Background particles */}
+      <ParticleBackground />
+      
+      {/* Sidebar */}
+      <Sidebar 
+        isExpanded={isSidebarExpanded} 
+        toggleSidebar={toggleSidebar}
+        chatSessions={chatSessions}
+        currentSessionId={currentSessionId}
+        onLoadSession={loadSession}
+        onClearHistory={clearAllHistory}
+        onNewChat={startNewChat}
+      />
+      
+      {/* Model selection bar */}
+      <ModelBar 
+        models={modelData} 
+        selectedModels={enabledModels} 
+        onToggleModel={toggleModel}
+      />
+      
+      {/* Main content */}
+      <main className={`pt-16 pb-24 px-2 transition-all duration-200 ${mainContentMargin}`}>
+        {!isFirstPrompt && (
+          <div className="mt-4">
+            {/* Model responses - no user message bar */}
+            <ModelCardContainer 
+              models={modelData
+                .filter(model => enabledModels.includes(model.id))
+                .map(model => ({
+                  ...model,
+                  isTyping: typingModels.includes(model.id),
+                  conversation: modelConversations[model.id] || []
+                }))}
+              enabledModels={enabledModels}
+              onToggleModel={toggleModel}
+            />
+          </div>
+        )}
+      </main>
+      
+      {/* Chat input */}
+      <ChatInput 
+        onSubmit={handleChatSubmit} 
+        isFirstPrompt={isFirstPrompt} 
+        setIsFirstPrompt={setIsFirstPrompt}
+      />
+    </div>
+  );
+}
+
+export default App;
