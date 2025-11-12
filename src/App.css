@@ -1,3 +1,7 @@
+/* ========================================
+   PROFESSIONAL THEME ENHANCEMENTS
+   ======================================== */
+
 /* Hide scrollbar for Chrome, Safari and Opera */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
@@ -7,6 +11,46 @@
 .hide-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+/* Enhanced Chat Input - Frosted Glass */
+.chat-input {
+  backdrop-filter: blur(12px);
+  background: rgba(30, 34, 40, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  transition: all 0.25s ease-in-out;
+  margin-bottom: env(safe-area-inset-bottom, 0px); /* Support for mobile safe areas */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.chat-input:focus-within {
+  border-color: rgba(0, 255, 200, 0.3);
+  box-shadow: 0 0 12px rgba(0, 255, 200, 0.1);
+}
+
+/* AI Card Styling */
+.ai-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(20, 22, 28, 0.75);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  border-radius: 18px;
+}
+
+.ai-card:hover {
+  border-color: rgba(0, 255, 200, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Sidebar Professional Styling */
+.sidebar {
+  background: linear-gradient(180deg, #0e1117 0%, #0b0e13 100%);
+}
+
+.sidebar .active {
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid #00d4ff;
 }
 
 /* Particle Animation */
@@ -39,6 +83,16 @@
   }
 }
 
+/* Smooth scrolling for all containers */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Enhanced transitions */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Media Queries for Responsive Design */
 @media (max-width: 768px) {
   .ml-\[260px\] {
@@ -47,6 +101,10 @@
   
   .ml-\[250px\] {
     margin-left: 70px;
+  }
+  
+  .ai-card {
+    border-radius: 14px;
   }
 }
 
@@ -60,21 +118,18 @@
   }
 }
 
-/* Smooth scrolling for all containers */
-.scroll-smooth {
-  scroll-behavior: smooth;
-}
-
-/* Enhanced transitions */
-* {
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
 /* Mobile optimizations */
 @media (max-width: 425px) {
   .ml-\[260px\],
   .ml-\[250px\],
   .ml-\[70px\] {
     margin-left: 0 !important;
+  }
+  
+  /* Ensure chat input is properly positioned on mobile */
+  .chat-input {
+    margin: 0 8px;
+    border-radius: 12px;
+    max-width: calc(100vw - 16px) !important;
   }
 }

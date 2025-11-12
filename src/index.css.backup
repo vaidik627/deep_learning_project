@@ -1,0 +1,338 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   PROFESSIONAL THEME - COLOR TOKENS
+   ======================================== */
+
+:root {
+  /* Base Colors */
+  --bg-dark: #0b0f13;
+  --bg-panel: #11151b;
+  --bg-card: #14181f;
+  --bg-input: rgba(20, 24, 31, 0.6);
+  
+  /* Text Colors */
+  --text-main: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  
+  /* Accent Colors */
+  --accent-teal: #00f5d4;
+  --accent-purple: #9d4edd;
+  --accent-gold: #ffb703;
+  --accent-blue: #00b3ff;
+  
+  /* Border & Shadow */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.1);
+  --shadow-soft: 0 0 18px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 10px rgba(0, 180, 255, 0.5);
+}
+
+/* ========================================
+   GLOBAL STYLES - PERFORMANCE OPTIMIZED
+   ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+* {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+/* Performance optimizations */
+html {
+  background-color: var(--bg-dark);
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: radial-gradient(circle at 10% 10%, #0b0f13, #0a0d10 40%, #101622 100%);
+  background-attachment: fixed;
+  color: var(--text-main);
+  overflow-x: hidden;
+  line-height: 1.6;
+  /* Reduce transition duration for better performance */
+  transition: all 0.2s ease-in-out;
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Simplified vignette overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.03) 0%, transparent 70%);
+  mix-blend-mode: overlay;
+  z-index: 0;
+}
+
+/* ========================================
+   CUSTOM SCROLLBAR - SIMPLIFIED
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ========================================
+   GLASSMORPHISM EFFECTS - OPTIMIZED
+   ======================================== */
+
+.glass-effect {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+  /* Only use backdrop-filter on hover for performance */
+  transition: backdrop-filter 0.3s ease;
+}
+
+.glass-effect:hover {
+  backdrop-filter: blur(12px);
+}
+
+.glass-panel {
+  background: rgba(17, 21, 27, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  transition: all 0.3s ease;
+}
+
+.glass-panel:hover {
+  backdrop-filter: blur(12px);
+  border-color: var(--border-hover);
+}
+
+/* ========================================
+   CHAT INPUT
+   ======================================== */
+
+.chat-input {
+  background: rgba(30, 34, 40, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  transition: all 0.25s ease-in-out;
+}
+
+.chat-input:focus-within {
+  backdrop-filter: blur(12px);
+  border-color: rgba(0, 255, 200, 0.3);
+  box-shadow: 0 0 12px rgba(0, 255, 200, 0.1);
+}
+
+/* ========================================
+   AI CARDS - PERFORMANCE OPTIMIZED
+   ======================================== */
+
+.ai-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(20, 22, 28, 0.75);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  border-radius: 18px;
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform, border-color;
+}
+
+.ai-card:hover {
+  border-color: rgba(0, 255, 200, 0.15);
+  transform: translateY(-2px) translateZ(0);
+}
+
+/* ========================================
+   SIDEBAR
+   ======================================== */
+
+.sidebar {
+  background: linear-gradient(180deg, #0e1117 0%, #0b0e13 100%);
+}
+
+.sidebar .active {
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid #00d4ff;
+}
+
+/* ========================================
+   ANIMATIONS - SIMPLIFIED FOR PERFORMANCE
+   ======================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message {
+  animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes typingGlow {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.typing-effect {
+  animation: typingGlow 1.2s infinite ease-in-out;
+}
+
+/* ========================================
+   PROFESSIONAL COMPONENTS - OPTIMIZED
+   ======================================== */
+
+.pro-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  transition: all 0.3s ease;
+  /* Hardware acceleration */
+  transform: translateZ(0);
+}
+
+.pro-button {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 0.75rem 1.5rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.pro-button:hover {
+  border-color: var(--border-hover);
+  color: var(--text-main);
+}
+
+.pro-button.active {
+  border-color: var(--accent-blue);
+  color: #ffffff;
+  box-shadow: var(--shadow-glow);
+}
+
+.pro-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.pro-input:focus {
+  outline: none;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(0, 245, 212, 0.1);
+}
+
+/* ========================================
+   SEND BUTTON GRADIENT
+   ======================================== */
+
+.send-button-gradient {
+  background: linear-gradient(90deg, #00c6ff, #0072ff);
+  border-radius: 10px;
+  padding: 0.75rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 114, 255, 0.3);
+}
+
+.send-button-gradient:hover {
+  box-shadow: 0 0 25px rgba(0, 114, 255, 0.5);
+  transform: scale(1.05);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.text-pro-main { color: var(--text-main); }
+.text-pro-secondary { color: var(--text-secondary); }
+.text-pro-muted { color: var(--text-muted); }
+
+.bg-pro-dark { background-color: var(--bg-dark); }
+.bg-pro-panel { background-color: var(--bg-panel); }
+.bg-pro-card { background-color: var(--bg-card); }
+
+.border-pro-subtle { border-color: var(--border-subtle); }
+.border-pro-hover { border-color: var(--border-hover); }
+
+/* ========================================
+   MODEL GRID LAYOUT
+   ======================================== */
+
+.model-grid {
+  transition: all 0.4s ease;
+  padding-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 24px;
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ai-card:enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.ai-card:enter-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ========================================
+   RESPONSIVE IMPROVEMENTS
+   ======================================== */
+
+@media (max-width: 768px) {
+  .pro-card, .glass-panel, .ai-card {
+    border-radius: 14px;
+  }
+  
+  .model-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}

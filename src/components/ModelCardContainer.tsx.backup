@@ -1,0 +1,75 @@
+import React, { useRef, memo, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import ModelCard from './ModelCard';
+
+interface ChatMessage {
+  user: string;
+  ai: string;
+  timestamp: number;
+}
+
+interface Model {
+  id: string;
+  name: string;
+  color: string;
+  isTyping?: boolean;
+  conversation?: ChatMessage[];
+}
+
+interface ModelCardContainerProps {
+  models: Model[];
+  enabledModels: string[];
+  onToggleModel: (modelId: string) => void;
+}
+
+// Use memo to prevent unnecessary re-renders
+const ModelCardContainer: React.FC<ModelCardContainerProps> = memo(({ 
+  models, 
+  enabledModels, 
+  onToggleModel 
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Memoize the model cards to prevent unnecessary re-renders
+  const modelCards = useMemo(() => {
+    return models.map((model) => (
+      <div 
+        key={model.id} 
+        className="w-full transition-all duration-300 ease-in-out"
+      >
+        <ModelCard
+          id={model.id}
+          name={model.name}
+          color={model.color}
+          isEnabled={enabledModels.includes(model.id)}
+          onToggle={() => onToggleModel(model.id)}
+          isTyping={model.isTyping}
+          conversation={model.conversation || []}
+        />
+      </div>
+    ));
+  }, [models, enabledModels, onToggleModel]);
+  
+  return (
+    <motion.div 
+      className="w-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
+      {/* Grid layout for model cards */}
+      <div 
+        ref={containerRef}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-all duration-400"
+        style={{
+          willChange: 'transform',
+          transform: 'translateZ(0)' // Hardware acceleration
+        }}
+      >
+        {modelCards}
+      </div>
+    </motion.div>
+  );
+});
+
+export default ModelCardContainer;

@@ -1,0 +1,122 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Send } from 'lucide-react';
+
+interface ChatInputProps {
+  onSubmit: (message: string) => void;
+  isFirstPrompt: boolean;
+  setIsFirstPrompt: (value: boolean) => void;
+}
+
+const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, isFirstPrompt, setIsFirstPrompt }) => {
+  const [message, setMessage] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    
+    onSubmit(message);
+    setMessage('');
+    
+    if (isFirstPrompt) {
+      setIsFirstPrompt(false);
+    }
+  };
+  
+  // Auto-resize textarea
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+  }, [message]);
+  
+  // Input container variants with smooth transitions
+  const containerVariants = {
+    center: { 
+      maxWidth: '700px',
+      width: '90%',
+      y: '-50%',
+      x: '-50%',
+      left: '50%',
+      bottom: '50%',
+      position: 'absolute' as 'absolute',
+      transition: {
+        duration: 0.6,
+        ease: [0.4, 0, 0.2, 1] as any,
+      }
+    },
+    bottom: { 
+      maxWidth: '900px',
+      width: '90%',
+      y: 0,
+      x: '-50%',
+      left: '50%',
+      bottom: '20px',
+      position: 'fixed' as 'fixed',
+      transition: {
+        duration: 0.6,
+        ease: [0.4, 0, 0.2, 1] as any,
+      }
+    }
+  };
+  
+  return (
+    <motion.div
+      className="z-30 transition-all duration-500 ease-in-out"
+      initial={isFirstPrompt ? 'center' : 'bottom'}
+      animate={isFirstPrompt ? 'center' : 'bottom'}
+      variants={containerVariants}
+    >
+      <form 
+        onSubmit={handleSubmit}
+        className="chat-input relative overflow-hidden shadow-2xl group"
+      >
+        {/* Subtle ambient glow on focus */}
+        <div className="absolute inset-0 bg-gradient-to-r from-accent-teal/5 via-accent-purple/5 to-accent-gold/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        
+        <textarea
+          ref={textareaRef}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Ask anything and press Enter..."
+          className="w-full bg-transparent py-4 px-5 pr-16 outline-none resize-none max-h-[150px] text-white relative z-10 placeholder:text-white/40 text-base leading-relaxed"
+          rows={1}
+          style={{ fontSize: '15px', lineHeight: '1.75' }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
+        />
+        <motion.button
+          type="submit"
+          className="send-button-gradient absolute right-3 bottom-3 p-2.5 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
+          disabled={!message.trim()}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {/* Subtle shine effect */}
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            animate={{
+              x: ['-100%', '200%'],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+          />
+          <Send size={20} className="relative z-10" />
+        </motion.button>
+      </form>
+    </motion.div>
+  );
+};
+
+export default ChatInput;

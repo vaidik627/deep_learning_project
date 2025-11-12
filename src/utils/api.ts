@@ -3,21 +3,59 @@
 
 const PROXY_ENDPOINT = 'http://localhost:3001/api/nvidia/chat';
 
+// Model configuration mapping with optimized token limits
+const MODEL_CONFIG: Record<string, { modelName: string; temperature: number; topP: number; maxTokens: number }> = {
+  gpt: {
+    modelName: 'moonshotai/kimi-k2-instruct',
+    temperature: 0.6,
+    topP: 0.9,
+    maxTokens: 8192 // Kimi supports up to 8K tokens
+  },
+  gemini: {
+    modelName: 'openai/gpt-oss-20b',
+    temperature: 1,
+    topP: 1,
+    maxTokens: 4096 // GPT-OSS-20B standard limit
+  },
+  deepseek: {
+    modelName: 'microsoft/phi-4-mini-instruct',
+    temperature: 0.1,
+    topP: 0.7,
+    maxTokens: 2048 // Phi-4 Mini optimized limit
+  }
+};
+
 export async function fetchModelResponse(model: string, prompt: string, onStream?: (text: string) => void) {
-  if (model !== "NVIDIA Kimi Instruct" && model !== "GPT-5 Nano" && model !== "gpt") return "";
+  if (model !== "gpt" && model !== "gemini" && model !== "deepseek") return "";
+
+  const config = MODEL_CONFIG[model];
+  if (!config) return "";
 
   try {
+    console.log(`🚀 Fetching response for ${model} (${config.modelName})`);
+    
+    // Add system message for models to format responses like Kimi
+    const messages = (model === 'gemini' || model === 'deepseek')
+      ? [
+          { 
+            role: "system", 
+            content: "You are a helpful AI assistant. Always respond in clear paragraphs and bullet points. Never use tables or complex markdown formatting. Keep responses concise and easy to read." 
+          },
+          { role: "user", content: prompt }
+        ]
+      : [{ role: "user", content: prompt }];
+    
     const response = await fetch(PROXY_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "moonshotai/kimi-k2-instruct",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.6,
-        top_p: 0.9,
-        max_tokens: 4096,
+        model: config.modelName,
+        messages: messages,
+        temperature: config.temperature,
+        top_p: config.topP,
+        max_tokens: config.maxTokens,
         stream: true,
       }),
     });
@@ -29,8 +67,36 @@ export async function fetchModelResponse(model: string, prompt: string, onStream
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let fullText = "";
+    let pendingText = "";
+    
+    console.log(`📥 Streaming response from NVIDIA via proxy for ${model}...`);
 
-    console.log('📥 Streaming response from NVIDIA via proxy...');
+    // Optimized buffered streaming for ChatGPT-like performance
+    const streamCharacters = async (text: string) => {
+      const buffer = [];
+      const BATCH_SIZE = 3; // Process 3-5 characters at once for natural flow
+      
+      for (let i = 0; i < text.length; i++) {
+        buffer.push(text[i]);
+        
+        // Render in batches for smoother animation
+        if (buffer.length >= BATCH_SIZE || i === text.length - 1) {
+          fullText += buffer.join('');
+          buffer.length = 0;
+          
+          if (onStream) {
+            // Use requestAnimationFrame for 60fps smooth rendering
+            await new Promise(resolve => {
+              requestAnimationFrame(() => {
+                onStream(fullText);
+                // Minimal delay for natural typing rhythm
+                setTimeout(resolve, Math.random() * 8 + 2); // 2-10ms for ultra-fast feel
+              });
+            });
+          }
+        }
+      }
+    };
 
     while (true) {
       const { done, value } = await reader.read();
@@ -47,13 +113,27 @@ export async function fetchModelResponse(model: string, prompt: string, onStream
           const data = JSON.parse(jsonLine);
           const delta = data?.choices?.[0]?.delta?.content;
           if (delta) {
-            fullText += delta;
-            if (onStream) onStream(fullText);
+            pendingText += delta;
+            
+            // Stream accumulated text character by character
+            const textToStream = pendingText;
+            pendingText = "";
+            await streamCharacters(textToStream);
           }
         } catch (e) {
           console.warn("Chunk parsing error:", e);
         }
       }
+    }
+    
+    // Stream any remaining text
+    if (pendingText && onStream) {
+      await streamCharacters(pendingText);
+    }
+    
+    // Send final update
+    if (onStream && fullText) {
+      onStream(fullText);
     }
 
     if (!fullText.trim()) return "⚠️ No response from model.";
